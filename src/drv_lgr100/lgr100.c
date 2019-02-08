@@ -75,7 +75,7 @@ static void update_device(ohmd_device* device)
 
 	// Read all the messages from the device.
 	while(true){
-		int size = hid_read_timeout(priv->handle, buffer, FEATURE_BUFFER_SIZE, 20);
+		int size = hid_read(priv->handle, buffer, FEATURE_BUFFER_SIZE);
 		if(size < 0){
 			LOGE("error reading from device");
 			return;
@@ -110,7 +110,6 @@ static void update_device(ohmd_device* device)
 		}
 		else if(buffer[0] == LGR100_IRQ_SENSORS) {
 			handle_tracker_sensor_msg(priv, buffer, size);
-			return;
 		}
 		else if (buffer[0] == LGR100_IRQ_UNKNOWN1) {
 			// prints different data based on if there is anything in front of the proximity sensor
@@ -185,6 +184,11 @@ static ohmd_device* open_device(ohmd_driver* driver, ohmd_device_desc* desc)
 	priv->handle = hid_open_path(desc->path);
 
 	if(!priv->handle) {
+		goto cleanup;
+	}
+
+	if(hid_set_nonblocking(priv->handle, 1) == -1){
+		ohmd_set_error(driver->ctx, "failed to set non-blocking on device");
 		goto cleanup;
 	}
 
